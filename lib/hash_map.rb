@@ -1,12 +1,17 @@
 KeyValuePair = Struct.new(:key, :value)
 
 class HashMap
-  attr_reader :collision_count
+  attr_reader :total_collision_count
 
   def initialize
     @storage = []
-    @hasher = lambda { |key| key.length }
-    @collision_count = 0
+    @locator = lambda { |_key, collision_count| collision_count } # default locator
+    @total_collision_count = 0
+  end
+
+  def with_locator(&locator)
+    @locator = locator
+    self
   end
 
   def retrieve(key)
@@ -19,16 +24,22 @@ class HashMap
   end
   alias []= put
 
+  def fill_level
+    @storage.count { |item| !item.nil? }.to_f / @storage.length
+  end
+
   private
 
   def find_index(key)
-    index = @hasher.call(key)
+    collision_count = 0
+    index = @locator.call(key, collision_count)
 
     until free_position?(index) ^ found?(index, key)
-      @collision_count += 1
-      index = @hasher.call(key)
+      collision_count += 1
+      index = @locator.call(key, collision_count)
     end
 
+    @total_collision_count += collision_count
     index
   end
 

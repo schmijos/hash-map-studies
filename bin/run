@@ -3,31 +3,32 @@ require_relative '../lib/hash_map'
 
 optimizers = [
   {
-    name: 'Normal unoptimized linked list',
-    block: proc {}
+    name: 'Based on key length',
+    block: proc { |key, collision_count| key.length + collision_count }
   },
   {
-    name: 'Linked list optimized with move to front',
-    block: proc { |list, current| Strategies::MoveToFront.optimize(list, current) }
-  },
-  {
-    name: 'Linked list optimized with BEST STRATEGY EVAA11!11',
-    block: proc { |list, current| Strategies::YourOwnStrategy.optimize(list, current) }
+    name: 'Best hash dealer evaaaa!111!1',
+    block: proc do |_key, collision_count|
+      # TODO your optimizer here
+      collision_count
+    end
   }
 ]
 
 seed = Random.new_seed
 puts "Initializing experiment with random seed #{seed}"
 
-optimizers.each do |optimizer|
-  puts "Strategy: #{optimizer[:name]}"
-  ['goethe_wette'].each do |sample_name|
+optimizers.each do |locator|
+  puts "Strategy: #{locator[:name]}"
+  ['numeric_keys'].each do |sample_name|
     rng = Random.new(seed)
-    items = File.read("spec/data/#{sample_name}.txt").split(/\W+/)
-    linked_list = CountingList.new(items).with_optimizer(&optimizer[:block])
+    keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
 
-    30_000.times { linked_list.retrieve(items.sample(random: rng)) }
+    hash_map = HashMap.new.with_locator(&locator[:block])
 
-    puts "  #{sample_name}: #{linked_list.hop_count}"
+    keys.each { |key| hash_map[key] = :value }
+    raise 'Element could not be found' if keys.one? { |key| hash_map[key].nil? }
+
+    puts "  #{sample_name}: #{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
   end
 end
