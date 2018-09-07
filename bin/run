@@ -1,34 +1,35 @@
 #!/usr/bin/env ruby
+require 'timeout'
 require_relative '../lib/hash_map'
+require_relative '../lib/optimizer_repository'
 
-optimizers = [
-  {
-    name: 'Based on key length',
-    block: proc { |key, collision_count| key.length + collision_count }
-  },
-  {
-    name: 'Best hash dealer evaaaa!111!1',
-    block: proc do |_key, collision_count|
-      # TODO your optimizer here
-      collision_count
-    end
-  }
-]
+OptimizerRepository.register(
+    'Based on key length (default)',
+    proc { |key, collision_count| key.length + collision_count }
+)
+Dir['optimizers/**/*.rb'].sort.each { |f| require_relative "../#{f}" }
 
-seed = Random.new_seed
+seed = ENV['RANDOM_SEED'].to_i || Random.new_seed
+Kernel.srand seed
 puts "Initializing experiment with random seed #{seed}"
 
-optimizers.each do |locator|
+OptimizerRepository.all.each do |locator|
   puts "Strategy: #{locator[:name]}"
   ['numeric_keys'].each do |sample_name|
-    rng = Random.new(seed)
     keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
 
-    hash_map = HashMap.new.with_locator(&locator[:block])
+    hash_map = HashMap.new.with_locator(&locator[:locator])
 
-    keys.each { |key| hash_map[key] = :value }
-    raise 'Element could not be found' if keys.one? { |key| hash_map[key].nil? }
+    begin
+      Timeout.timeout(60) do
+        keys.each { |key| hash_map[key] = :value }
+      end
 
-    puts "  #{sample_name}: #{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
+      raise 'Element could not be found' if keys.one? { |key| hash_map[key].nil? }
+    rescue StandardError => e
+      puts "  #{sample_name}: ! #{e.message}"
+    else
+      puts "  #{sample_name}: #{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
+    end
   end
 end
