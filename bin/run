@@ -4,8 +4,8 @@ require_relative '../lib/hash_map'
 require_relative '../lib/optimizer_repository'
 
 OptimizerRepository.register(
-    'Based on key length (default)',
-    proc { |key, collision_count| key.length + collision_count }
+  'Based on key length (default)',
+  proc { |key, collision_count| key.length + collision_count }
 )
 Dir['optimizers/**/*.rb'].sort.each { |f| require_relative "../#{f}" }
 
