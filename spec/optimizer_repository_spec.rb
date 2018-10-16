@@ -7,18 +7,18 @@ RSpec.describe OptimizerRepository do
 
   describe '#all' do
     it 'returns all the Optimizers(the OPTIMIZERS array)' do
-      expect(OptimizerRepository.all).to eq([])
+      expect(described_class.all).to eq([])
 
-      OptimizerRepository.register(locator_name, locator)
+      described_class.register(locator_name, locator)
 
-      expect(OptimizerRepository.all.count).to eq(1)
-      expect(OptimizerRepository.all).to be_a(Array)
+      expect(described_class.all.count).to eq(1)
+      expect(described_class.all).to be_a(Array)
     end
   end
 
   describe '#register' do
     it 'stores a new optimizer' do
-      expect { OptimizerRepository.register(locator_name, locator) }.to change { OptimizerRepository.all.count }.by(1)
+      expect { described_class.register(locator_name, locator) }.to change { described_class.all.count }.by(1)
     end
   end
 end
