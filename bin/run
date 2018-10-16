@@ -3,33 +3,39 @@ require 'timeout'
 require_relative '../lib/hash_map'
 require_relative '../lib/optimizer_repository'
 
-OptimizerRepository.register(
-  'Based on key length (default)',
-  proc { |key, collision_count| key.length + collision_count }
-)
 Dir['optimizers/**/*.rb'].sort.each { |f| require_relative "../#{f}" }
 
-seed = ENV['RANDOM_SEED'].to_i || Random.new_seed
+seed = (ENV['RANDOM_SEED'] || Random.new_seed).to_i
 Kernel.srand seed
 puts "Initializing experiment with random seed #{seed}"
 
-OptimizerRepository.all.each do |locator|
-  puts "Strategy: #{locator[:name]}"
+def with_all_samples
   ['numeric_keys'].each do |sample_name|
-    keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
-
-    hash_map = HashMap.new.with_locator(&locator[:locator])
-
-    begin
-      Timeout.timeout(60) do
-        keys.each { |key| hash_map[key] = :value }
-      end
-
-      raise 'Element could not be found' if keys.one? { |key| hash_map[key].nil? }
-    rescue StandardError => e
-      puts "  #{sample_name}: ! #{e.message}"
-    else
-      puts "  #{sample_name}: #{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
-    end
+    sample_keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
+    yield(sample_name, sample_keys)
   end
+end
+
+def try_experiment(hash_map, sample_keys)
+  Timeout.timeout(60) do
+    sample_keys.each { |key| hash_map[key] = :dummy_value }
+  end
+
+  raise 'Element could not be found' if sample_keys.one? { |key| hash_map[key].nil? }
+rescue StandardError => e
+  "! #{e.message}"
+else
+  "#{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
+end
+
+OptimizerRepository.all.each do |locator|
+  strategy_report = "Strategy: #{locator[:name]}\n"
+
+  with_all_samples do |sample_name, sample_keys|
+    hash_map = HashMap.new.with_locator(&locator[:locator])
+    experiment_report = try_experiment(hash_map, sample_keys)
+    strategy_report << "  #{sample_name}: #{experiment_report}\n"
+  end
+
+  puts strategy_report
 end
