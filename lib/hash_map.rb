@@ -9,6 +9,10 @@ class HashMap
     @total_collision_count = 0
   end
 
+  def default_locator
+    lambda { |_key, collision_count| collision_count }
+  end
+
   def with_locator(&locator)
     @locator = locator
     self
