@@ -5,12 +5,9 @@ require_relative '../lib/optimizer_repository'
 
 Dir['optimizers/**/*.rb'].sort.each { |f| require_relative "../#{f}" }
 
-seed = (ENV['RANDOM_SEED'] || Random.new_seed).to_i
-Kernel.srand seed
-puts "Initializing experiment with random seed #{seed}"
-
 def with_all_samples
   ['numeric_keys'].each do |sample_name|
+    # Attention the order is different in each run (#shuffe)
     sample_keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
     yield(sample_name, sample_keys)
   end
@@ -21,12 +18,19 @@ def try_experiment(hash_map, sample_keys)
     sample_keys.each { |key| hash_map[key] = :dummy_value }
   end
 
-  raise 'Element could not be found' if sample_keys.one? { |key| hash_map[key].nil? }
+  raise 'Element has been lost in the nether' if sample_keys.one? { |key| hash_map[key].nil? }
 rescue StandardError => e
   "! #{e.message}"
 else
-  "#{hash_map.total_collision_count} collisions, #{hash_map.fill_level} fill"
+  x = hash_map.fill_level
+  y = hash_map.total_collision_count / 2
+  z = (1 - x/2) * (Math.sqrt(y) + 2)
+  "#{z.round(2)} (#{y} collisions at #{x.round(5)} fill)"
 end
+
+seed = (ENV['RANDOM_SEED'] || Random.new_seed).to_i
+Kernel.srand seed
+puts "Initializing experiments with random seed #{seed}"
 
 OptimizerRepository.all.each do |locator|
   strategy_report = "Strategy: #{locator[:name]}\n"
