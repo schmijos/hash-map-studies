@@ -5,10 +5,10 @@ require_relative '../lib/optimizer_repository'
 
 Dir['optimizers/**/*.rb'].sort.each { |f| require_relative "../#{f}" }
 
-def with_all_samples
-  ['numeric_keys'].each do |sample_name|
-    # Attention the order is different in each run (#shuffe)
-    sample_keys = File.read("spec/data/#{sample_name}.txt").split(/\W+/).shuffle
+def with_each_sample
+  %w[sentry_issues_first_seen numeric_keys goethe_words lawoon_commits passwords lawoon_typescript].each do |sample_name|
+    # Attention the order is different in each run because of #shuffe. Use the RANDOM_SEED environment variable.
+    sample_keys = File.read("data/#{sample_name}.txt").split(/\W+/).shuffle
     yield(sample_name, sample_keys)
   end
 end
@@ -35,7 +35,7 @@ puts "Initializing experiments with random seed #{seed}"
 OptimizerRepository.all.each do |locator|
   strategy_report = "Strategy: #{locator[:name]}\n"
 
-  with_all_samples do |sample_name, sample_keys|
+  with_each_sample do |sample_name, sample_keys|
     hash_map = HashMap.new.with_locator(&locator[:locator])
     experiment_report = try_experiment(hash_map, sample_keys)
     strategy_report << "  #{sample_name}: #{experiment_report}\n"
